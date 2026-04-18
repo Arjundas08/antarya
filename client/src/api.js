@@ -1,4 +1,5 @@
-const API_URL = '/api';
+// In production, VITE_API_URL points to your Render backend. In dev, Vite proxy handles /api.
+const API_URL = import.meta.env.VITE_API_URL || '/api';
 
 function getHeaders() {
   const token = localStorage.getItem('antarya_token');
