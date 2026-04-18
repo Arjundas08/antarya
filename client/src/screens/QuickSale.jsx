@@ -114,9 +114,10 @@ export default function QuickSale() {
     setLoading(true);
     try {
       await api.recordSale({
-        items: saleItems, totalAmount: total, paymentMethod: paymentType,
-        customerName: paymentType === 'Udhaar' ? udhaarName : buyerName,
-        isUdhaar: paymentType === 'Udhaar'
+        items: saleItems, 
+        totalAmount: total, 
+        paymentType: paymentType.toLowerCase(), // Ensure lowercase 'udhaar'
+        customerName: paymentType.toLowerCase() === 'udhaar' ? udhaarName : (buyerName || 'Walk-in Customer'),
       });
       setSuccess(paymentType);
       setTimeout(() => {

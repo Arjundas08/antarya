@@ -72,6 +72,10 @@ export default function MyCustomers() {
         (c.phone && c.phone.includes(searchTerm));
     }
     if (filter === 'credit') return (c.totalCredit || 0) > 0;
+    if (filter === 'recent') {
+      const days = getDaysSince(c.lastVisit);
+      return days !== null && days <= 5;
+    }
     if (filter === 'inactive') {
       const days = getDaysSince(c.lastVisit);
       return days !== null && days >= 10;
@@ -79,6 +83,7 @@ export default function MyCustomers() {
     return true;
   }).sort((a,b) => {
     if (filter === 'credit') return (b.totalCredit || 0) - (a.totalCredit || 0);
+    if (filter === 'recent' || filter === 'all') return new Date(b.lastVisit || 0) - new Date(a.lastVisit || 0);
     return 0; // maintain original sort otherwise
   });
 
@@ -144,6 +149,7 @@ export default function MyCustomers() {
       <div style={{ display: 'flex', gap: 8, marginBottom: 24, overflowX: 'auto', paddingBottom: 4, scrollbarWidth: 'none' }}>
         {[
           { id: 'all', label: 'All Users' },
+          { id: 'recent', label: 'Recent Buyers' },
           { id: 'credit', label: 'Has Udhaar' },
           { id: 'inactive', label: 'Inactive' }
         ].map(tab => (
@@ -214,10 +220,14 @@ export default function MyCustomers() {
                     </div>
                   </div>
 
-                  {hasCredit && (
+                  {hasCredit ? (
                     <div style={{ textAlign: 'right' }}>
                       <div style={{ fontSize: '1.1rem', fontWeight: 800, color: '#f43f5e' }}>{formatMoney(customer.totalCredit)}</div>
-                      <div style={{ fontSize: '0.65rem', color: '#f43f5e', textTransform: 'uppercase', fontWeight: 700, opacity: 0.8 }}>Due</div>
+                      <div style={{ fontSize: '0.65rem', color: '#f43f5e', textTransform: 'uppercase', fontWeight: 700, opacity: 0.8 }}>Pending</div>
+                    </div>
+                  ) : (
+                    <div style={{ textAlign: 'right' }}>
+                       <div style={{ background: 'rgba(16,185,129,0.1)', color: '#10b981', padding: '4px 8px', borderRadius: '4px', fontSize: '0.7rem', fontWeight: 700 }}>PAID</div>
                     </div>
                   )}
                 </div>

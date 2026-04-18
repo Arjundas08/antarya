@@ -9,7 +9,12 @@ router.use(authMiddleware);
 // POST /api/sales - Record a new sale
 router.post('/', async (req, res) => {
   try {
-    const { items, paymentType, customerId, customerName } = req.body;
+    const { items, customerId, customerName } = req.body;
+    let paymentType = (req.body.paymentType || req.body.paymentMethod || 'cash').toLowerCase();
+    
+    // Map Frontend names to standard backend names
+    if (paymentType === 'udhaar' || paymentType === 'credit') paymentType = 'udhaar';
+    if (paymentType === 'upi' || paymentType === 'online') paymentType = 'upi';
 
     if (!Array.isArray(items) || items.length === 0) {
       return res.status(400).json({ error: 'Sale items are required' });
