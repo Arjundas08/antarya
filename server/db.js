@@ -1,6 +1,18 @@
 const mongoose = require('mongoose');
 
 const connectDB = async () => {
+  console.log('--- Startup Diagnostics ---');
+  console.log('MONGO_URI exists:', !!process.env.MONGO_URI);
+  console.log('GEMINI_API_KEY exists:', !!process.env.GEMINI_API_KEY);
+  console.log('JWT_SECRET exists:', !!process.env.JWT_SECRET);
+  console.log('PORT:', process.env.PORT);
+  console.log('---------------------------');
+
+  if (!process.env.MONGO_URI) {
+    console.error('❌ FATAL: MONGO_URI is not set. Add it in your environment variables.');
+    process.exit(1);
+  }
+
   try {
     const conn = await mongoose.connect(process.env.MONGO_URI, { family: 4 });
     console.log(`✅ MongoDB Connected: ${conn.connection.host}`);
