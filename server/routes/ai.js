@@ -174,7 +174,7 @@ CONTEXT:
 Advise the shopkeeper exactly what to restock today, and how to get rid of the dead stock.`;
   }
   
-  prompt += `\nKeep your response actionable, clear, using bullet points. Format using markdown. Limit to 150 words. Provide specific numbers from the context.`;
+  prompt += `\nKeep your response actionable, clear, and highly valuable to a small Kirana shop owner. Use bullet points and markdown. Write in simple "Hinglish" (a mix of simple Hindi & English). Do not cut off your thoughts.`;
   return prompt;
 }
 
@@ -193,10 +193,10 @@ router.post('/advisor', authenticate, async (req, res) => {
 
     const result = await ai.models.generateContent({
       model: 'gemini-2.5-flash',
-      contents: [{ role: 'user', parts: [{ text: message || 'Give me your initial analysis and top 3 priorities for today.' }] }],
+      contents: [{ role: 'user', parts: [{ text: message || 'Give me your initial analysis and top 3 priorities for today to grow my shop.' }] }],
       config: {
         systemInstruction: systemPrompt,
-        maxOutputTokens: 500,
+        maxOutputTokens: 2048,
         temperature: 0.7,
       }
     });

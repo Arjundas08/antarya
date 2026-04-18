@@ -73,6 +73,7 @@ const api = {
   deleteExpense: (id) => api.delete(`/dashboard/expense/${id}`),
 
   // AI (Gemini + Bhashini)
+  askAdvisor: (advisorType, message) => api.post('/ai/advisor', { advisorType, message }),
   aiChat: (message, history) => api.post('/ai/chat', { message, history }),
   extractBill: (imageBase64) => api.post('/ai/extract-bill', { imageBase64 }),
   speechToText: (audioBase64, language) => api.post('/ai/speech-to-text', { audioBase64, language }),

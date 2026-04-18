@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useStore } from '../context/StoreContext';
-import { Search, Plus, Edit2, Trash2, Package } from 'lucide-react';
+import { Search, Plus, Edit2, Trash2, Package, ArrowLeft, MoreVertical, X } from 'lucide-react';
 import api from '../api';
 
 export default function MyStock() {
@@ -14,6 +14,9 @@ export default function MyStock() {
   const [editingId, setEditingId] = useState(null);
   const [editQty, setEditQty] = useState('');
   const [editPrice, setEditPrice] = useState('');
+  
+  // Modal state for better mobile UX
+  const [openMenuId, setOpenMenuId] = useState(null);
 
   useEffect(() => {
     loadProducts();
@@ -30,10 +33,10 @@ export default function MyStock() {
   };
 
   const getStatus = (product) => {
-    if (product.quantity <= 0) return { label: '🚫 OUT', class: 'badge-critical' };
-    if (product.quantity <= 2) return { label: '🚨 ORDER NOW', class: 'badge-critical' };
-    if (product.quantity <= product.minStock) return { label: '⚠️ LOW', class: 'badge-low' };
-    return { label: '✅ OK', class: 'badge-ok' };
+    if (product.quantity <= 0) return { label: 'OUT OF STOCK', color: '#f43f5e', bg: 'rgba(244,63,94,0.15)' };
+    if (product.quantity <= 2) return { label: 'CRITICAL', color: '#f43f5e', bg: 'rgba(244,63,94,0.15)' };
+    if (product.quantity <= product.minStock) return { label: 'LOW STOCK', color: '#fbbf24', bg: 'rgba(251,191,36,0.15)' };
+    return { label: 'IN STOCK', color: '#10b981', bg: 'rgba(16,185,129,0.15)' };
   };
 
   const filteredProducts = products
@@ -61,10 +64,11 @@ export default function MyStock() {
       if (editPrice !== '') updates.sellingPrice = Number(editPrice);
 
       await api.updateProduct(product.id, updates);
-      showToast(`${product.name} updated! ✅`);
+      showToast(`${product.name} updated successfully!`);
       setEditingId(null);
       setEditQty('');
       setEditPrice('');
+      setOpenMenuId(null);
       loadProducts();
     } catch (err) {
       showToast(err.message || 'Update failed', 'error');
@@ -76,6 +80,7 @@ export default function MyStock() {
     try {
       await api.deleteProduct(product.id);
       showToast(`${product.name} deleted`);
+      setOpenMenuId(null);
       loadProducts();
     } catch (err) {
       showToast(err.message || 'Delete failed', 'error');
@@ -83,174 +88,197 @@ export default function MyStock() {
   };
 
   if (loading) {
-    return <div className="page"><div className="spinner"></div></div>;
+    return <div className="page" style={{display: 'flex', alignItems: 'center', justifyContent: 'center'}}><div className="spinner"></div></div>;
   }
 
   return (
-    <div className="page">
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
-        <h1 className="page-title">My Stock 📦</h1>
-        <button className="btn btn-primary btn-sm" onClick={() => navigate('/add-stock')}>
-          <Plus size={16} /> Add
+    <div className="page" style={{ paddingTop: 16 }}>
+      {/* Header */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <button className="btn btn-ghost" onClick={() => navigate('/dashboard')} style={{ padding: 8, width: 40, height: 40, borderRadius: '50%', background: 'var(--glass)' }}>
+            <ArrowLeft size={20} />
+          </button>
+          <div>
+            <h1 className="page-title" style={{ fontSize: '1.4rem', marginBottom: 2 }}>Inventory</h1>
+            <p className="page-subtitle" style={{ fontSize: '0.8rem' }}>{products.length} Items Total</p>
+          </div>
+        </div>
+        <button className="btn btn-primary" onClick={() => navigate('/add-stock')} style={{ padding: '8px 16px', borderRadius: '2rem' }}>
+          <Plus size={18} style={{ marginRight: 4 }}/> Add Item
         </button>
       </div>
-      <p className="page-subtitle">{products.length} items in your shop</p>
 
-      {/* Search */}
-      <div className="search-bar">
-        <Search />
+      {/* Modern Search Bar */}
+      <div style={{ 
+        display: 'flex', alignItems: 'center', background: 'rgba(255,255,255,0.03)', 
+        border: '1px solid rgba(255,255,255,0.1)', borderRadius: '1rem', padding: '0 16px', marginBottom: 20,
+        boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.2)'
+      }}>
+        <Search size={20} color="var(--text-muted)" />
         <input
-          className="input"
-          placeholder="Search items..."
+          type="text"
+          placeholder="Search by name..."
           value={searchTerm}
           onChange={e => setSearchTerm(e.target.value)}
-          id="search-stock"
+          style={{ 
+            flex: 1, background: 'transparent', border: 'none', color: 'white', 
+            padding: '16px 12px', fontSize: '0.95rem', outline: 'none' 
+          }}
         />
+        {searchTerm && <X size={18} color="var(--text-muted)" onClick={() => setSearchTerm('')} style={{cursor: 'pointer'}} />}
       </div>
 
-      {/* Filter Tabs */}
-      <div className="tabs">
-        <button className={`tab ${filter === 'all' ? 'active' : ''}`} onClick={() => setFilter('all')}>
-          All ({products.length})
-        </button>
-        <button className={`tab ${filter === 'low' ? 'active' : ''}`} onClick={() => setFilter('low')}>
-          Low ({lowCount})
-        </button>
-        <button className={`tab ${filter === 'critical' ? 'active' : ''}`} onClick={() => setFilter('critical')}>
-          Critical ({criticalCount})
-        </button>
+      {/* Pill Tabs */}
+      <div style={{ display: 'flex', gap: 8, marginBottom: 24, overflowX: 'auto', paddingBottom: 4, scrollbarWidth: 'none' }}>
+        {[
+          { id: 'all', label: 'All Items', count: products.length },
+          { id: 'low', label: 'Low Stock', count: lowCount },
+          { id: 'critical', label: 'Critical', count: criticalCount }
+        ].map(tab => (
+          <button
+            key={tab.id}
+            onClick={() => setFilter(tab.id)}
+            style={{
+              padding: '8px 16px',
+              borderRadius: '2rem',
+              whiteSpace: 'nowrap',
+              fontSize: '0.85rem',
+              fontWeight: 600,
+              background: filter === tab.id ? 'white' : 'transparent',
+              color: filter === tab.id ? 'black' : 'var(--text-secondary)',
+              border: filter === tab.id ? '1px solid white' : '1px solid rgba(255,255,255,0.2)',
+              transition: 'all 0.2s',
+            }}
+          >
+            {tab.label} <span style={{ opacity: 0.6, fontSize: '0.8rem', marginLeft: 4 }}>{tab.count}</span>
+          </button>
+        ))}
       </div>
 
-      {/* Order Low Items Button */}
-      {lowCount > 0 && filter === 'all' && (
-        <button
-          className="btn btn-secondary btn-full"
-          onClick={() => navigate('/add-stock')}
-          style={{ marginBottom: 16 }}
-        >
-          🛒 Order {lowCount + criticalCount} Low Items
-        </button>
+      {/* Restock Action Banner */}
+      {lowCount > 0 && filter === 'low' && (
+        <div style={{ background: 'linear-gradient(135deg, rgba(59,130,246,0.2), rgba(37,99,235,0.1))', border: '1px solid rgba(59,130,246,0.3)', padding: 16, borderRadius: '1rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
+          <div>
+            <h4 style={{ margin: 0, color: '#60a5fa', fontSize: '0.95rem' }}>Restock Required</h4>
+            <p style={{ margin: '2px 0 0', color: 'var(--text-secondary)', fontSize: '0.8rem' }}>{lowCount + criticalCount} items are running low.</p>
+          </div>
+          <button className="btn btn-primary btn-sm" onClick={() => navigate('/add-stock')}>Order Now</button>
+        </div>
       )}
 
-      {/* Product List */}
+      {/* Data Rows */}
       {filteredProducts.length === 0 ? (
-        <div className="empty-state">
-          <div className="emoji">📦</div>
-          <h3>No items found</h3>
-          <p>{searchTerm ? 'Try a different search' : 'Add some products to get started'}</p>
-          <button className="btn btn-primary" onClick={() => navigate('/add-stock')}>
-            <Plus size={16} /> Add Stock
-          </button>
+        <div className="empty-state" style={{ padding: '40px 20px' }}>
+          <Package size={48} color="var(--glass-border)" style={{ marginBottom: 16 }} />
+          <h3>No inventory found</h3>
+          <p style={{ color: 'var(--text-secondary)' }}>{searchTerm ? 'Try a different search term.' : 'Start adding products to your shop.'}</p>
         </div>
       ) : (
-        filteredProducts.map(product => {
-          const status = getStatus(product);
-          const isEditing = editingId === product.id;
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          {filteredProducts.map((product, i) => {
+            const status = getStatus(product);
+            const isEditing = editingId === product.id;
+            const menuOpen = openMenuId === product.id;
 
-          return (
-            <div className="card" key={product.id} style={{ padding: 14 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                <div style={{ flex: 1 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <span style={{ fontWeight: 700, fontSize: '0.95rem' }}>{product.name}</span>
-                    <span className={`badge ${status.class}`}>{status.label}</span>
-                  </div>
-                  <div style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', marginTop: 4 }}>
-                    ₹{product.sellingPrice}/{product.unit}
-                    {product.costPrice > 0 && (
-                      <span style={{ color: 'var(--text-muted)', marginLeft: 8 }}>
-                        Cost: ₹{product.costPrice}
-                      </span>
-                    )}
-                  </div>
-                </div>
-                <div style={{ textAlign: 'right' }}>
+            return (
+              <div key={product.id} className="animate-in" style={{ 
+                animationDelay: `${i * 0.05}s`,
+                background: 'var(--bg-card)', 
+                border: '1px solid var(--glass-border)',
+                borderRadius: '1rem',
+                padding: '16px',
+                position: 'relative',
+                overflow: 'hidden'
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+                  {/* Category / Icon Avatar */}
                   <div style={{
-                    fontSize: '1.3rem',
-                    fontWeight: 800,
-                    color: product.quantity <= product.minStock ? 'var(--warning)' : 'var(--text-primary)'
+                    width: 48, height: 48, borderRadius: '12px', background: 'rgba(255,255,255,0.05)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.2rem',
+                    border: '1px solid rgba(255,255,255,0.05)'
                   }}>
-                    {product.quantity}
+                    {product.name.charAt(0).toUpperCase()}
                   </div>
-                  <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>
-                    {product.unit}
-                  </div>
-                </div>
-              </div>
 
-              {/* Actions */}
-              <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
-                <button
-                  className="btn btn-sm btn-secondary"
-                  onClick={() => {
-                    if (isEditing) {
-                      setEditingId(null);
-                    } else {
-                      setEditingId(product.id);
-                      setEditQty(String(product.quantity));
-                      setEditPrice(String(product.sellingPrice));
-                    }
-                  }}
-                  style={{ flex: 1 }}
-                >
-                  <Edit2 size={14} /> {isEditing ? 'Cancel' : 'Edit'}
-                </button>
-                <button
-                  className="btn btn-sm btn-primary"
-                  onClick={() => {
-                    navigate('/add-stock');
-                  }}
-                  style={{ flex: 1 }}
-                >
-                  <Plus size={14} /> Restock
-                </button>
-                <button
-                  className="btn btn-sm btn-icon"
-                  onClick={() => handleDelete(product)}
-                  style={{ background: 'var(--danger-bg)', color: 'var(--danger)', width: 36, height: 36 }}
-                >
-                  <Trash2 size={14} />
-                </button>
-              </div>
-
-              {/* Edit Form */}
-              {isEditing && (
-                <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px solid var(--glass-border)' }}>
-                  <div className="input-row">
-                    <div className="input-group" style={{ marginBottom: 0 }}>
-                      <label>Quantity</label>
-                      <input
-                        className="input"
-                        type="number"
-                        value={editQty}
-                        onChange={e => setEditQty(e.target.value)}
-                        style={{ padding: '10px 12px' }}
-                      />
+                  {/* Info */}
+                  <div style={{ flex: 1 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                      <span style={{ fontWeight: 600, fontSize: '1.05rem', color: 'white' }}>{product.name}</span>
                     </div>
-                    <div className="input-group" style={{ marginBottom: 0 }}>
-                      <label>Price (₹)</label>
-                      <input
-                        className="input"
-                        type="number"
-                        value={editPrice}
-                        onChange={e => setEditPrice(e.target.value)}
-                        style={{ padding: '10px 12px' }}
-                      />
+                    <div style={{ fontSize: '0.8.5rem', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <span>₹{product.sellingPrice} / {product.unit}</span>
+                      <div style={{ width: 4, height: 4, borderRadius: '50%', background: 'rgba(255,255,255,0.2)' }} />
+                      <span style={{ 
+                        background: status.bg, color: status.color, padding: '2px 8px', 
+                        borderRadius: '1rem', fontSize: '0.65rem', fontWeight: 700, letterSpacing: '0.5px'
+                      }}>
+                        {status.label}
+                      </span>
                     </div>
                   </div>
-                  <button
-                    className="btn btn-success btn-sm btn-full"
-                    onClick={() => handleUpdate(product)}
-                    style={{ marginTop: 10 }}
-                  >
-                    ✅ Save Changes
+
+                  {/* Quantity */}
+                  <div style={{ textAlign: 'right', marginRight: 8 }}>
+                    <div style={{ fontSize: '1.4rem', fontWeight: 800, color: status.color === '#10b981' ? 'white' : status.color, lineHeight: 1 }}>
+                      {product.quantity}
+                    </div>
+                    <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', textTransform: 'uppercase', marginTop: 4 }}>
+                      {product.unit}s
+                    </div>
+                  </div>
+
+                  {/* Action Menu Toggle */}
+                  <button onClick={() => setOpenMenuId(menuOpen ? null : product.id)} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', padding: 4, cursor: 'pointer' }}>
+                    <MoreVertical size={20} />
                   </button>
                 </div>
-              )}
-            </div>
-          );
-        })
+
+                {/* Expanded Action Menu */}
+                {menuOpen && !isEditing && (
+                  <div style={{ marginTop: 16, paddingTop: 16, borderTop: '1px solid var(--glass-border)', display: 'flex', gap: 8 }}>
+                    <button className="btn btn-secondary" style={{ flex: 1, padding: 10, fontSize: '0.85rem' }} 
+                      onClick={() => {
+                        setEditingId(product.id);
+                        setEditQty(String(product.quantity));
+                        setEditPrice(String(product.sellingPrice));
+                      }}>
+                      <Edit2 size={16} style={{marginRight: 6}}/> Quick Edit
+                    </button>
+                    <button className="btn btn-primary" style={{ flex: 1, padding: 10, fontSize: '0.85rem' }} onClick={() => navigate('/add-stock')}>
+                      <Plus size={16} style={{marginRight: 6}}/> Restock
+                    </button>
+                    <button className="btn" style={{ background: 'rgba(244,63,94,0.15)', color: '#f43f5e', padding: 10 }} onClick={() => handleDelete(product)}>
+                      <Trash2 size={18} />
+                    </button>
+                  </div>
+                )}
+
+                {/* Inline Quick Edit Form */}
+                {isEditing && (
+                  <div style={{ marginTop: 16, paddingTop: 16, borderTop: '1px solid var(--glass-border)', background: 'rgba(0,0,0,0.2)', padding: 16, borderRadius: '0.5rem', margin: '-16px -16px -16px -16px', borderTopLeftRadius: 0, borderTopRightRadius: 0 }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 16 }}>
+                      <div>
+                        <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: 4, display: 'block' }}>Update Quantity</label>
+                        <input className="input" type="number" value={editQty} onChange={e => setEditQty(e.target.value)} style={{ padding: '12px' }} />
+                      </div>
+                      <div>
+                        <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: 4, display: 'block' }}>Selling Price (₹)</label>
+                        <input className="input" type="number" value={editPrice} onChange={e => setEditPrice(e.target.value)} style={{ padding: '12px' }} />
+                      </div>
+                    </div>
+                    <div style={{ display: 'flex', gap: 12 }}>
+                      <button className="btn btn-primary" style={{ flex: 1 }} onClick={() => handleUpdate(product)}>Save Changes</button>
+                      <button className="btn btn-secondary" onClick={() => { setEditingId(null); setOpenMenuId(null); }}>Cancel</button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
       )}
+      <div style={{ height: 40 }}></div>
     </div>
   );
 }
