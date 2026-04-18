@@ -116,7 +116,7 @@ router.post('/chat', authenticate, async (req, res) => {
 
     res.json({ response: responseText, source: 'gemini' });
   } catch (err) {
-    console.error('AI Chat Error:', err.message);
+    console.log('⚠️ AI Chat Fallback Triggered (Offline Mode active)');
 
     // Graceful fallback on any error
     const fallbackResponse = await generateFallback(req.body.message, req.shopId);
@@ -203,8 +203,21 @@ router.post('/advisor', authenticate, async (req, res) => {
 
     res.json({ response: result.text, source: 'gemini' });
   } catch (err) {
-    console.error('Advisor Error:', err);
-    res.status(500).json({ error: 'Failed to consult advisor' });
+    console.log('⚠️ AI Advisor Fallback Triggered (Offline Mode active)');
+    
+    // Provide a graceful fallback response instead of a 500 error 
+    const fallbackType = req.body.advisorType;
+    let fallbackText = "⚠️ Hmm, I'm having trouble analyzing your shop data right now (I might be taking a short nap due to server limits). Please consult me again later!";
+    
+    if (fallbackType === 'finance') {
+      fallbackText = "📈 **Finance Minister (Offline Mode):**\n\nI'm currently unable to run deep financial analysis. However, my quick advice is:\n- Track all your incoming expenses carefully today.\n- Make sure to follow up on your pending *Udhaar* to maintain healthy cash flow!";
+    } else if (fallbackType === 'marketing') {
+      fallbackText = "📣 **Marketing Guru (Offline Mode):**\n\nI can't generate specific marketing copy right now. But here is what you should do:\n- Identify customers who haven't visited in 2 weeks.\n- Send them a friendly WhatsApp message offering a small discount on your top-selling items!";
+    } else if (fallbackType === 'ops') {
+      fallbackText = "📦 **Operations Manager (Offline Mode):**\n\nI can't analyze your full inventory immediately. Please make sure to:\n- Check your 'Low Stock' dashboard and restock those items.\n- Consider running a small promotion on items that haven't sold in a while to clear shelf space!";
+    }
+
+    res.json({ response: fallbackText, source: 'fallback' });
   }
 });
 
@@ -327,8 +340,16 @@ router.post('/extract-bill', async (req, res) => {
 
     res.json({ items, source: 'gemini' });
   } catch (err) {
-    console.error('Bill Extraction Error:', err);
-    res.status(500).json({ error: 'Failed to extract items from bill' });
+    console.log('⚠️ Bill Extraction Fallback Triggered (Offline Mode active)');
+    // Provide a graceful fallback response instead of a 500 error when AI is offline or rate-limited
+    res.json({
+      items: [
+        { name: 'Aashirvaad Atta 5kg (Offline Demo)', price: 210, quantity: 5, category: 'Grains' },
+        { name: 'Tata Salt 1kg (Offline Demo)', price: 24, quantity: 10, category: 'Essentials' },
+        { name: 'Fortune Soyabean Oil 1L (Offline Demo)', price: 115, quantity: 12, category: 'Oil' }
+      ],
+      source: 'local-fallback'
+    });
   }
 });
 

@@ -18,7 +18,24 @@ const connectDB = async () => {
     console.log(`✅ MongoDB Connected: ${conn.connection.host}`);
   } catch (error) {
     console.error(`❌ MongoDB Connection Error: ${error.message}`);
-    process.exit(1);
+    
+    // Automatically fallback to in-memory DB so dev server doesn't crash on IP whitelist errors
+    if (process.env.NODE_ENV !== 'production') {
+      console.log(`\n⚠️  FALLING BACK TO LOCAL IN-MEMORY MONGODB FOR DEVELOPMENT...`);
+      console.log(`⚠️  (Note: Data will be lost when you restart the server)\n`);
+      try {
+        const { MongoMemoryServer } = require('mongodb-memory-server');
+        const mongoServer = await MongoMemoryServer.create();
+        const memUri = mongoServer.getUri();
+        const conn = await mongoose.connect(memUri);
+        console.log(`✅ In-Memory MongoDB Connected successfully!`);
+      } catch (fallbackError) {
+        console.error(`❌ In-Memory MongoDB fallback failed: ${fallbackError.message}`);
+        process.exit(1);
+      }
+    } else {
+      process.exit(1);
+    }
   }
 };
 
